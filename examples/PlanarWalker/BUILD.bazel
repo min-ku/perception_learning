@@ -1,0 +1,63 @@
+# -*- mode: python -*-
+# vi: set ft=python :
+
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "run_passive",
+    srcs = ["run_passive.cc"],
+    data = ["PlanarWalker.urdf"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
+    tags = ["manual"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "test_contact",
+    srcs = ["test_contact.cc"],
+    data = ["PlanarWalker.urdf"],
+    deprecation = "Attic/RigidBodyTree is deprecated.",
+    tags = ["manual"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "run_gait_dircon",
+    srcs = ["run_gait_dircon.cc"],
+    data = ["PlanarWalker.urdf"],
+    deps = [
+        "//common",
+        "//multibody:visualization_utils",
+        "//systems/primitives",
+        "//systems/trajectory_optimization/dircon",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_binary(
+    name = "visualize_gait",
+    srcs = ["visualize_gait.cc"],
+    data = ["PlanarWalkerWithTorso.urdf"],
+    tags = ["manual"],
+    deps = [
+        "//attic/systems/trajectory_optimization:dircon",
+        "//common",
+        "@drake//:drake_shared_library",
+        "@gflags",
+    ],
+)
+
+cc_library(
+    name = "urdf",
+    data = [
+        "PlanarWalker.urdf",
+        "PlanarWalkerWithTorso.urdf",
+    ],
+)

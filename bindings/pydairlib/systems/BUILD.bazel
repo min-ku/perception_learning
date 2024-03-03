@@ -1,0 +1,154 @@
+# -*- python -*-
+load("@drake//tools/install:install.bzl", "install")
+
+package(default_visibility = ["//visibility:public"])
+
+load(
+    "@drake//tools/skylark:pybind.bzl",
+    "drake_pybind_library",
+    "get_drake_py_installs",
+    "get_pybind_package_info",
+    "pybind_py_library",
+)
+
+pybind_py_library(
+    name = "perception_py",
+    cc_deps = [
+        "//systems/perception:camera_utils",
+        "//systems/perception:grid_map_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "perception",
+    cc_srcs = ["perception_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "footstep_planning_py",
+    cc_deps = [
+        "//systems/controllers/footstep_planning:alip_miqp",
+        "//systems/controllers/footstep_planning:alip_mpfc_system",
+        "//systems/controllers/footstep_planning:alip_multiqp",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "footstep_planning",
+    cc_srcs = ["footstep_planning_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "robot_lcm_systems_py",
+    cc_deps = [
+        "//systems:robot_lcm_systems",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "robot_lcm_systems",
+    cc_srcs = ["robot_lcm_systems_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "plant_visualizer_py",
+    cc_deps = [
+        "//systems:plant_visualizer",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "plant_visualizer",
+    cc_srcs = ["plant_visualizer_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "primitives_py",
+    cc_deps = [
+        "//systems/primitives",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "primitives",
+    cc_srcs = ["primitives_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "framework_py",
+    cc_deps = [
+        "//lcmtypes:lcmt_robot",
+        "//systems/framework:lcm_driven_loop",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "framework",
+    cc_srcs = ["framework_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+pybind_py_library(
+    name = "system_utils_py",
+    cc_deps = [
+        "//systems:system_utils",
+        "@drake//:drake_shared_library",
+    ],
+    cc_so_name = "system_utils",
+    cc_srcs = ["system_utils_py.cc"],
+    py_deps = [
+        "@drake//bindings/pydrake",
+        ":module_py",
+    ],
+    py_imports = ["."],
+)
+
+# This determines how `PYTHONPATH` is configured, and how to install the
+# bindings.
+PACKAGE_INFO = get_pybind_package_info("//bindings")
+
+py_library(
+    name = "module_py",
+    srcs = [
+        "__init__.py",
+    ],
+    imports = PACKAGE_INFO.py_imports,
+    deps = [
+        "//bindings/pydairlib:module_py",
+    ],
+)
+
+PY_LIBRARIES = [
+    ":footstep_planning_py",
+    ":framework_py",
+    ":perception_py",
+    ":plant_visualizer_py",
+    ":primitives_py",
+    ":robot_lcm_systems_py",
+    ":system_utils_py",
+]
+
+# Package roll-up (for Bazel dependencies).
+py_library(
+    name = "systems",
+    imports = PACKAGE_INFO.py_imports,
+    deps = PY_LIBRARIES,
+)

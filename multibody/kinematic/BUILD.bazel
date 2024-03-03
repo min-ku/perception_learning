@@ -1,0 +1,72 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "kinematic",
+    srcs = [
+        "distance_evaluator.cc",
+        "fixed_joint_evaluator.cc",
+        "kinematic_evaluator.cc",
+        "kinematic_evaluator_set.cc",
+        "world_point_evaluator.cc",
+    ],
+    hdrs = [
+        "distance_evaluator.h",
+        "fixed_joint_evaluator.h",
+        "kinematic_evaluator.h",
+        "kinematic_evaluator_set.h",
+        "world_point_evaluator.h",
+    ],
+    deps = [
+        "//multibody:view_frame",
+        "//solvers:constraint_factory",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "constraints",
+    srcs = [
+        "kinematic_constraints.cc",
+    ],
+    hdrs = [
+        "kinematic_constraints.h",
+    ],
+    deps = [
+        ":kinematic",
+        "//multibody:utils",
+        "//solvers:constraints",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "kinematic_evaluator_caching_test",
+    srcs = [
+        "test/kinematic_evaluator_caching_test.cc",
+    ],
+    deps = [
+        ":kinematic",
+        "//common",
+        "//examples/Cassie:cassie_urdf",
+        "//examples/Cassie:cassie_utils",
+    ],
+)
+
+cc_test(
+    name = "kinematic_evaluator_test",
+    size = "small",
+    srcs = [
+        "test/kinematic_evaluator_test.cc",
+    ],
+    deps = [
+        ":kinematic",
+        "//common",
+        "//examples/PlanarWalker:urdf",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+)

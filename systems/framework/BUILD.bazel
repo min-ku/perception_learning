@@ -1,0 +1,75 @@
+# -*- python -*-
+
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "vector",
+    srcs = [
+        "impact_info_vector.cc",
+        "output_vector.cc",
+        "timestamped_vector.cc",
+    ],
+    hdrs = [
+        "impact_info_vector.h",
+        "output_vector.h",
+        "timestamped_vector.h",
+    ],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_test(
+    name = "timestamped_vector_test",
+    size = "small",
+    srcs = [
+        "test/timestamped_vector_test.cc",
+    ],
+    deps = [
+        ":vector",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
+cc_test(
+    name = "state_vector_test",
+    size = "small",
+    srcs = [
+        "test/state_vector_test.cc",
+    ],
+    deps = [
+        ":vector",
+        "@drake//:drake_shared_library",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "geared_motor",
+    srcs = [
+        "geared_motor.cc",
+    ],
+    hdrs = [
+        "geared_motor.h",
+    ],
+    deps = [
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "lcm_driven_loop",
+    srcs = [
+    ],
+    hdrs = [
+        "lcm_driven_loop.h",
+    ],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)

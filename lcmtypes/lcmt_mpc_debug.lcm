@@ -1,0 +1,18 @@
+package dairlib;
+
+struct lcmt_mpc_debug
+{
+  int64_t utime;
+  int32_t fsm_state;
+
+  int64_t solve_time_us;
+  boolean success;
+
+  double x0[4];
+  double p0[3];
+
+  lcmt_foothold_set footholds;
+  lcmt_mpc_solution desired;
+  lcmt_mpc_solution guess;
+  lcmt_mpc_solution solution;
+}

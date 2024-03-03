@@ -1,0 +1,12 @@
+# -*- python -*-
+
+package(default_visibility = ["//visibility:public"])
+
+# Prebuilt C++ and Python ROS libraries including local, unpublished packages
+
+cc_library(
+    name = "acd2d",
+    srcs = glob(["src/**/*.cpp"]),
+    hdrs = glob(["src/**/*.h", "src/**/*.hpp"]),
+    strip_include_prefix = "src",
+)

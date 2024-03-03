@@ -1,0 +1,100 @@
+load("@drake//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "convex_polygon_ros_receiver",
+    srcs = ["convex_polygon_ros_receiver.cc"],
+    hdrs = ["convex_polygon_ros_receiver.h"],
+    tags = ["ros"],
+    deps = [
+        ":convex_polygon_set",
+        ":polygon_utils",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@ros-local",
+    ],
+)
+
+cc_library(
+    name = "convex_polygon_lcm_systems",
+    srcs = ["convex_polygon_lcm_systems.cc"],
+    hdrs = ["convex_polygon_lcm_systems.h"],
+    deps = [
+        ":convex_polygon_set",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "convex_polygon",
+    srcs = ["convex_polygon.cc"],
+    hdrs = ["convex_polygon.h"],
+    deps = [
+        "//lcmtypes:lcmt_robot",
+        "@eigen",
+    ],
+)
+
+cc_library(
+    name = "polygon_utils",
+    srcs = ["polygon_utils.cc"],
+    hdrs = ["polygon_utils.h"],
+    tags = ["ros"],
+    deps = [
+        ":convex_polygon",
+        ":convex_polygon_set",
+        "//solvers:fast_osqp_solver",
+        "@acd2d",
+        "@ros-local",
+    ],
+)
+
+cc_library(
+    name = "convex_polygon_set",
+    srcs = ["convex_polygon_set.cc"],
+    hdrs = ["convex_polygon_set.h"],
+    deps = [
+        ":convex_polygon",
+        "//common:eigen_utils",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_binary(
+    name = "polytest",
+    srcs = ["test/polygon_utils_test.cc"],
+    tags = ["ros"],
+    deps = [
+        ":polygon_utils",
+        "@gflags",
+        "@ros",
+    ],
+)
+
+cc_test(
+    name = "convex_polygon_test",
+    size = "small",
+    srcs = ["test/convex_polygon_test.cc"],
+    deps = [
+        ":convex_polygon",
+        ":convex_polygon_set",
+        "//common",
+        "//lcmtypes:lcmt_robot",
+        "@drake//:drake_shared_library",
+        "@drake//common/test_utilities",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "meshcat_utils",
+    srcs = ["meshcat_utils.cc"],
+    hdrs = ["meshcat_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+        "@eigen",
+    ],
+)

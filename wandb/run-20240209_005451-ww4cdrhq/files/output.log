@@ -1,0 +1,18 @@
+
+
+
+
+
+  1%|▍                                      | 4/400 [42:08<69:32:19, 632.17s/it]
+Traceback (most recent call last):
+  File "/home/minkukim/workspace/dairlib/bindings/pydairlib/perceptive_locomotion/perception_learning/inference/train_and_test.py", line 200, in <module>
+    train_and_test(
+  File "/home/minkukim/workspace/dairlib/bindings/pydairlib/perceptive_locomotion/perception_learning/inference/train_and_test.py", line 145, in train_and_test
+    train_loss = run_epoch(model, train_loader, device, params.loss, optimizer, is_training=True)
+  File "/home/minkukim/workspace/dairlib/bindings/pydairlib/perceptive_locomotion/perception_learning/inference/train_and_test.py", line 72, in run_epoch
+    loss.backward()
+  File "/home/minkukim/workspace/dairlib/venv/lib/python3.10/site-packages/torch/_tensor.py", line 522, in backward
+    torch.autograd.backward(
+  File "/home/minkukim/workspace/dairlib/venv/lib/python3.10/site-packages/torch/autograd/__init__.py", line 266, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt

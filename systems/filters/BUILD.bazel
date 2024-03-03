@@ -1,0 +1,48 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "filter_utils",
+    srcs = ["filter_utils.cc"],
+    hdrs = ["filter_utils.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "output_vector_filter",
+    srcs = ["output_vector_filter.cc"],
+    hdrs = ["output_vector_filter.h"],
+    deps = [
+        ":filter_utils",
+        "//systems/framework:vector",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "floating_base_velocity_filter",
+    hdrs = ["floating_base_velocity_filter.h"],
+    deps = [
+        ":output_vector_filter",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "s2s_kalman_filter",
+    hdrs = ["s2s_kalman_filter.h"],
+    deps = [
+        ":linear_kalman_filter",
+        "@drake//:drake_shared_library",
+    ],
+)
+
+cc_library(
+    name = "linear_kalman_filter",
+    srcs = ["linear_kalman_filter.cc"],
+    hdrs = ["linear_kalman_filter.h"],
+    deps = [
+        "@drake//:drake_shared_library",
+    ],
+)
