@@ -9,7 +9,7 @@ import multiprocessing
 import gymnasium as gym
 import matplotlib.pyplot as plt
 
-from pydrake.gym import DrakeGymEnv
+#from pydrake.gym import DrakeGymEnv
 
 # Even if all of these aren't explicitly used, they may be needed for python to
 # recognize certain derived classes
@@ -25,6 +25,10 @@ from pydrake.systems.all import (
     OutputPortIndex,
     ConstantVectorSource,
     ZeroOrderHold
+)
+
+from pydairlib.perceptive_locomotion.perception_learning.DrakeGymEnv import (
+    DrakeGymEnv
 )
 
 from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import (
@@ -52,11 +56,11 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     sim_env.set_name("CassieFootstepControllerEnvironment")
     controller = sim_env.AddToBuilderWithFootstepController(builder, AlipFootstepLQR) # AlipFootstep
     controller.set_name("AlipFootstepLQR")
-    ####
+
     observation = sim_env.AddToBuilderObservations(builder)
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
-    ####
+
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.Connect(
@@ -73,14 +77,13 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     DrawAndSaveDiagramGraph(diagram, '../ALIP_RL')
     return sim_env, controller, diagram
 
-
-def reset_handler(simulator, context, seed): # context = self.simulator.get_mutable_context() ?
+def reset_handler(simulator, seed): # context = self.simulator.get_mutable_context() ?
     
     np.random.seed(seed)
 
     # Get controller from context or simulator
     diagram = simulator.get_system()
-    #context = diagram.CreateDefaultContext()
+    context = diagram.CreateDefaultContext()
     controller = diagram.GetSubsystemByName("AlipFootstepLQR")
     sim_env = diagram.GetSubsystemByName("CassieFootstepControllerEnvironment")
     controller_context = controller.GetMyMutableContextFromRoot(context)
@@ -110,8 +113,8 @@ def reset_handler(simulator, context, seed): # context = self.simulator.get_muta
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
-    #t_init = datapoint['stance'] * t_s2s + datapoint['phase'] + t_ds
-    #context.SetTime(t_init)
+    t_init = datapoint['stance'] * t_s2s + datapoint['phase'] + t_ds
+    context.SetTime(t_init)
 
     # set the context state with the initial conditions from the datapoint
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
@@ -123,18 +126,14 @@ def reset_handler(simulator, context, seed): # context = self.simulator.get_muta
         context =controller_context,
         value = datapoint['desired_velocity']
     )
-    #simulator.reset_context(context)
-    #simulator.AdvanceTo()
+    simulator.reset_context(context)
+    simulator.Initialize()
+    return context
 
 
 def simulate_init(sim_params):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
-    
-    #contexts = initialize_sim(sim_env, controller, diagram, datapoint)
-
-    #simulator.reset_context(contexts['root'])
-    simulator.Initialize()
 
     def monitor(context):
         time_limit = 10
@@ -166,7 +165,8 @@ def simulate_init(sim_params):
         return EventStatus.Succeeded()
 
     simulator.set_monitor(monitor)
-    return simulator
+
+    return diagram, simulator
 
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
@@ -177,7 +177,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     #)
     #sim_params.visualize = True
 
-    simulator = simulate_init(sim_params)
+    diagram, simulator = simulate_init(sim_params)
 
     # Define Action space.
     la = np.array([-1., -1., -1.])
@@ -193,11 +193,6 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                   high=np.asarray(ho, dtype="float64"),
                                   dtype=np.float64)
 
-    #t_ss = controller.params.single_stance_duration
-    #t_ds = controller.params.double_stance_duration
-    #t_s2s = t_ss + t_ds
-    #t_eps = 1e-2
-    #time_step = t_s2s - t_eps - datapoint['phase']
     time_step = 30.0
     
     env = DrakeGymEnv(

@@ -84,6 +84,15 @@ py_library(
         ":terrain_utils",
         "//bindings/pydairlib/perceptive_locomotion/systems:alip_lqr_rl",
         "//bindings/pydairlib/perceptive_locomotion/systems:cassie_footstep_controller_gym_environment",
+        "//bindings/pydairlib/perceptive_locomotion/perception_learning:DrakeGymEnv",
+        "@drake//bindings/pydrake",
+    ],
+)
+
+py_library(
+    name = "DrakeGymEnv",
+    srcs = ["DrakeGymEnv.py"],
+    deps = [
         "@drake//bindings/pydrake",
     ],
 )
