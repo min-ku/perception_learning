@@ -74,13 +74,13 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     return sim_env, controller, diagram
 
 
-def reset_handler(simulator, diagram_context, seed): # context = self.simulator.get_mutable_context() ?
+def reset_handler(simulator, context, seed): # context = self.simulator.get_mutable_context() ?
     
     np.random.seed(seed)
 
     # Get controller from context or simulator
     diagram = simulator.get_system()
-    context = diagram.CreateDefaultContext()
+    #context = diagram.CreateDefaultContext()
     controller = diagram.GetSubsystemByName("AlipFootstepLQR")
     sim_env = diagram.GetSubsystemByName("CassieFootstepControllerEnvironment")
     controller_context = controller.GetMyMutableContextFromRoot(context)
@@ -110,8 +110,8 @@ def reset_handler(simulator, diagram_context, seed): # context = self.simulator.
     datapoint['stance'] = 0 if datapoint['stance'] == 'left' else 1
 
     #  First, align the timing with what's given by the initial condition
-    t_init = datapoint['stance'] * t_s2s + datapoint['phase'] + t_ds
-    context.SetTime(t_init)
+    #t_init = datapoint['stance'] * t_s2s + datapoint['phase'] + t_ds
+    #context.SetTime(t_init)
 
     # set the context state with the initial conditions from the datapoint
     sim_env.initialize_state(context, diagram, datapoint['q'], datapoint['v'])
@@ -120,8 +120,8 @@ def reset_handler(simulator, diagram_context, seed): # context = self.simulator.
         datapoint['initial_swing_foot_pos']
     )
     controller.get_input_port_by_name("desired_velocity").FixValue(
-        context=controller_context,
-        value=datapoint['desired_velocity']
+        context =controller_context,
+        value = datapoint['desired_velocity']
     )
     #simulator.reset_context(context)
     #simulator.AdvanceTo()
@@ -166,7 +166,7 @@ def simulate_init(sim_params):
         return EventStatus.Succeeded()
 
     simulator.set_monitor(monitor)
-    return controller, simulator
+    return simulator
 
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
@@ -177,12 +177,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     #)
     #sim_params.visualize = True
 
-    #sim_env, controller, diagram = build_diagram(sim_params)
-    #simulator = Simulator(diagram)
-    #context = diagram.CreateDefaultContext()
-    #simulator.set_monitor(monitor(sim_env, context, diagram))
-    controller, simulator = simulate_init(sim_params)
-
+    simulator = simulate_init(sim_params)
 
     # Define Action space.
     la = np.array([-1., -1., -1.])
@@ -203,7 +198,7 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
     #t_s2s = t_ss + t_ds
     #t_eps = 1e-2
     #time_step = t_s2s - t_eps - datapoint['phase']
-    time_step = 10.0
+    time_step = 30.0
     
     env = DrakeGymEnv(
         simulator=simulator,

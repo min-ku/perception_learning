@@ -51,22 +51,22 @@ def sample(sim_params):
     )
     input("Check...")
     #check_env(env)
-    rate = 0.0
+    rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
-    max_steps = 500
+    max_steps = 10000
     obs, _ = env.reset()
     input("Start..")
     for _ in range(int(max_steps)):
         # Plays a random policy.
-        input("Action...")
+        #input("Action...")
         action = env.action_space.sample()
-        input("Sampled...")
+        #input("Sampled...")
         obs, reward, terminated, truncated, info = env.step(action)
         #env.render()
-        input("...?")
+        #input("...?")
         if terminated or truncated:
-            if args.debug:
-                input("The environment will reset. Press Enter to continue...")
+            #if args.debug:
+            #    input("The environment will reset. Press Enter to continue...")
             obs, _ = env.reset()
 def _main():
     bazel_chdir()
