@@ -74,7 +74,7 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL')
+    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL_test')
     return sim_env, controller, diagram
 
 def reset_handler(simulator, seed):
@@ -99,14 +99,14 @@ def reset_handler(simulator, seed):
         )
     )
     datapoint = ic_generator.random()
-    #v_des_theta = np.pi / 6
-    #v_des_norm = 1.0
-    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    #v_norm = np.random.uniform(0.2, v_des_norm)
-    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    v_des_theta = np.pi / 6
+    v_des_norm = 1.0
+    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+    v_norm = np.random.uniform(0.2, v_des_norm)
+    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
 
     #datapoint = ic_generator.choose(0)
-    datapoint['desired_velocity'] = np.array([0.4, 0])
+    #datapoint['desired_velocity'] = np.array([0.4, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -139,7 +139,7 @@ def simulate_init(sim_params):
     simulator = Simulator(diagram)
     simulator.Initialize()
     def monitor(context):
-        time_limit = 30
+        time_limit = 50
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -158,15 +158,15 @@ def simulate_init(sim_params):
         
         if context.get_time() > time_limit:
             #print("Time Limit")
-            return EventStatus.ReachedTermination(diagram, "time limit")
+            return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
             #print("Left Toe")
-            return EventStatus.ReachedTermination(diagram, "left toe exceeded")
+            return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             #print("Right Toe")
-            return EventStatus.ReachedTermination(diagram, "right toe exceeded")
+            return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         return EventStatus.Succeeded()
 
@@ -176,13 +176,6 @@ def simulate_init(sim_params):
 
 
 def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
-    
-    #sim_params = CassieFootstepControllerEnvironmentOptions()
-    #sim_params.terrain = os.path.join(
-    #    perception_learning_base_folder, 'params/flat.yaml'
-    #)
-    #sim_params.visualize = True
-
     diagram, simulator = simulate_init(sim_params)
 
     # Define Action space.

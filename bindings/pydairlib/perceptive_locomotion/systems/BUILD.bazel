@@ -12,15 +12,6 @@ load(
 )
 
 py_library(
-    name = "alip_lqr",
-    srcs = ["alip_lqr.py"],
-    deps = [
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
     name = "alip_lqr_rl",
     srcs = ["alip_lqr_rl.py"],
     deps = [
@@ -42,20 +33,6 @@ py_library(
 )
 
 py_library(
-    name = "cassie_footstep_controller_environment",
-    srcs = ["cassie_footstep_controller_environment.py"],
-    deps = [
-        ":alip_lqr",
-        ":height_map_server",
-        "//bindings/pydairlib/cassie:cassie_utils_py",
-        "//bindings/pydairlib/common",
-        "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
-        "//bindings/pydairlib/systems",
-        "@drake//bindings/pydrake",
-    ],
-)
-
-py_library(
     name = "cassie_footstep_controller_gym_environment",
     srcs = ["cassie_footstep_controller_gym_environment.py"],
     deps = [
@@ -66,17 +43,6 @@ py_library(
         "//bindings/pydairlib/perceptive_locomotion:diagrams_py",
         "//bindings/pydairlib/systems",
         "@drake//bindings/pydrake",
-    ],
-)
-
-py_binary(
-    name = "alip_lqr_test",
-    srcs = ["alip_lqr_test.py"],
-    deps = [
-        ":alip_lqr",
-        ":cassie_footstep_controller_environment",
-        "//bindings/grid_map",
-        "//bindings/pydairlib/perceptive_locomotion:vision_utils",
     ],
 )
 
@@ -94,8 +60,7 @@ py_library(
 )
 
 PY_LIBRARIES = [
-    ":cassie_footstep_controller_environment",
-    ":alip_lqr",
+    ":cassie_footstep_controller_gym_environment",
     ":alip_lqr_rl",
 ]
 

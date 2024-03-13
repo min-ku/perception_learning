@@ -63,6 +63,7 @@ def _run_training(config, args):
     #https://github.com/Farama-Foundation/Gymnasium/pull/810
     if not args.train_single_env:
         input("Starting...")
+        sim_params.visualize = False
         env = make_vec_env(
                            env_name,
                            n_envs=num_env,
@@ -74,7 +75,9 @@ def _run_training(config, args):
 
     else:
         input("Starting...")
-
+        sim_params.visualize = False
+        if args.test:
+            sim_params.visualize = True
         env = gym.make(env_name,
                        sim_params = sim_params,
                        )
@@ -82,8 +85,8 @@ def _run_training(config, args):
         #check_env(env)
 
     if args.test:
-        model = PPO(policy_type, env, n_steps=64, n_epochs=2,
-                    batch_size=8, policy_kwargs=policy_kwargs)
+        model = PPO(policy_type, env, n_steps=128, n_epochs=2,
+                    batch_size=32, policy_kwargs=policy_kwargs)
     else:
         tensorboard_log = f"{log_dir}runs/test"
         model = PPO(
@@ -91,7 +94,8 @@ def _run_training(config, args):
             # In SB3, this is the mini-batch size.
             # https://github.com/DLR-RM/stable-baselines3/blob/master/docs/modules/ppo.rst
             batch_size=64*num_env,
-            #use_sde=True, #Use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
+            #Use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
+            #use_sde=True,
             verbose=1,
             tensorboard_log=tensorboard_log,
             policy_kwargs=policy_kwargs)
@@ -100,6 +104,7 @@ def _run_training(config, args):
               "in another terminal.")
 
     # Separate evaluation env.
+    sim_params.visualize = True
     eval_env = gym.make(env_name,
                         sim_params = sim_params,
                         )
@@ -139,7 +144,7 @@ def _main():
         return 0 if args.test else 1
 
     if args.test:
-        num_env = 2
+        num_env = 1
     elif args.train_single_env:
         num_env = 1
     else:
@@ -153,7 +158,7 @@ def _main():
         "num_workers": num_env,
         "local_log_dir": args.log_path,
         "model_save_freq": 2e2,
-        "policy_kwargs": {'activation_fn': th.nn.Tanh,#th.nn.ReLU,    # activation function
+        "policy_kwargs": {'activation_fn': th.nn.Tanh,        # activation function | th.nn.ReLU,
                           'net_arch': {'pi': [128, 128, 128], # policy and value networks
                                        'vf': [128, 128, 128]}},
         "sim_params" : sim_params

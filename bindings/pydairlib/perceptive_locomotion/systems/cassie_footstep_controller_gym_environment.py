@@ -21,10 +21,15 @@ from pydairlib.perceptive_locomotion.systems.height_map_server \
     import HeightMapServer, HeightMapOptions
 from pydairlib.multibody import SquareSteppingStoneList
 
+from pydrake.systems.analysis import SimulatorStatus
 from pydrake.multibody.plant import MultibodyPlant
+from pydrake.systems.framework import (
+    DiscreteValues,
+)
 from pydrake.systems.all import (
     State,
     Diagram,
+    EventStatus,
     Context,
     Simulator,
     InputPort,
@@ -39,15 +44,13 @@ from pydrake.systems.all import (
 params_folder = "bindings/pydairlib/perceptive_locomotion/params"
 
 class ObservationPublisher(LeafSystem):
-    def __init__(self, noise, plant):
+    def __init__(self, plant, noise=False):
         LeafSystem.__init__(self)
-        self.ns = 4#plant.num_multibody_states()
-        #self.DeclareVectorInputPort("states", self.ns)
-        #self.DeclareVectorOutputPort("observations", self.ns, self.CalcObs)
+        self.ns = 4
         self.noise = noise
         self.input_port_indices = {
-            'states' : self.DeclareVectorInputPort(
-                "states", self.ns
+            'obs_states' : self.DeclareVectorInputPort(
+                "obs_states", self.ns
             ).get_index()
         }
         self.output_port_indices = {
@@ -73,20 +76,39 @@ class ObservationPublisher(LeafSystem):
         output.set_value(plant_state)
 
 class RewardSystem(LeafSystem):
-    def __init__(self, plant):
-        LeafSystem.__init__(self)
-        # The state port is not used.
-        self.ns = 4#plant.num_multibody_states()
-        #self.DeclareVectorInputPort("state", self.ns)
-        #self.DeclareVectorOutputPort("reward", 1, self.CalcReward)
+    def __init__(self, alip_params: AlipFootstepLQROptions, sim_env):
+        super().__init__()
+
+        self.params = alip_params
+        self.cassie_sim = sim_env
+
         self.input_port_indices = {
-            'state' : self.DeclareVectorInputPort(
-                "state", self.ns
+            'lqr_reference': self.DeclareVectorInputPort(
+                "xd_ud[x,y]", 6
+            ).get_index(),
+            'x': self.DeclareVectorInputPort(
+                'x', 4
+            ).get_index(),
+            'fsm': self.DeclareVectorInputPort(
+                "fsm", 1
+            ).get_index(),
+            'time_until_switch': self.DeclareVectorInputPort(
+                "time_until_switch", 1
+            ).get_index(),
+            'footstep_command': self.DeclareVectorInputPort(
+                'footstep_command', 3
+            ).get_index(),
+            'state': self.DeclareVectorInputPort(
+                'x_u_t', 59
+            ).get_index(),
+            'vdes': self.DeclareVectorInputPort(
+                'vdes', 2
             ).get_index()
         }
+
         self.output_port_indices = {
             'reward': self.DeclareVectorOutputPort(
-                "reward", 1, self.CalcReward
+                "reward", 1, self.calc_reward
             ).get_index()
         }
 
@@ -98,8 +120,55 @@ class RewardSystem(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
-    def CalcReward(self, context, output):
-        reward = 1 #R_0 + R_accel + R_collision
+    def calc_reward(self, context: Context, output) -> None:
+        x = self.EvalVectorInput(context, self.input_port_indices['x']).value()
+        u = self.EvalVectorInput(context, self.input_port_indices['footstep_command']).value()[:2]
+        xd_ud = self.EvalVectorInput(context, self.input_port_indices['lqr_reference'])
+        xd = xd_ud.value()[:4]
+        ud = xd_ud.value()[4:]
+        LQRreward = -((x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud))
+        LQRreward = np.exp(LQRreward)
+
+        x_u_t = self.EvalVectorInput(context, self.input_port_indices['state']).value()
+        pos_vel = x_u_t[:45]
+        
+        plant = self.cassie_sim.get_plant()
+        plant_context = plant.CreateDefaultContext()
+        plant.SetPositionsAndVelocities(plant_context, pos_vel)
+        
+        # Body Frame Velocity
+        fb_frame = plant.GetBodyByName("pelvis").body_frame()
+        bf_vel = fb_frame.CalcSpatialVelocity(
+            plant_context, plant.world_frame(), fb_frame).translational()
+        
+        #vdes = np.array([0.4, 0])
+        vdes = self.EvalVectorInput(
+            context,
+            self.input_port_indices['vdes']
+        ).value().ravel()
+        
+        velocity_reward = np.exp(-np.linalg.norm(vdes-bf_vel[:2]))
+        
+        # Termination: if center of mass is 20cm 
+        
+        #left_toe_pos = plant.CalcPointsPositions(
+        #    plant_context, plant.GetBodyByName("toe_left").body_frame(),
+        #    np.array([0.02115, 0.056, 0.]), plant.world_frame()
+        #)
+        #right_toe_pos = plant.CalcPointsPositions(
+        #    plant_context, plant.GetBodyByName("toe_right").body_frame(),
+        #    np.array([0.02115, 0.056, 0.]), plant.world_frame()
+        #)
+        #com = plant.CalcCenterOfMassPositionInWorld(plant_context)
+        #z1 = com[2] - left_toe_pos[2]
+        #z2 = com[2] - right_toe_pos[2]
+        #termination_reward = 0.5
+        #print(z1)
+        #print(z2)
+        #if z1 < 0.4 or z2 < 0.4:
+        #    termination_reward = -3.
+
+        reward = LQRreward + 0.3*velocity_reward
         output[0] = reward
 
 class InitialConditionsServer:
@@ -151,45 +220,6 @@ class CassieFootstepControllerEnvironmentOptions:
     simulate_perception: bool = False
     visualize: bool = True
 
-#class Action(LeafSystem):
-#    def __init__(self):
-#        LeafSystem.__init__(self)
-
-        # get u_d -> command footstep[p_x p_y]
-
-#builder.ExportInput(prismatic_actuation_force.get_input_port(), "actions")
-
-"""
-class ObservationPublisher(LeafSystem):
-    def __init__(self, noise=False):
-        LeafSystem.__init__(self)
-        self.ns = controller_plant.num_multibody_states()
-        self.DeclareVectorInputPort("plant_states", self.ns)
-        self.DeclareVectorOutputPort("observations", self.ns, self.CalcObs)
-        self.noise = noise
-
-    def CalcObs(self, context, output):
-        plant_state = self.get_input_port(0).Eval(context)
-        if self.noise:
-            plant_state += np.random.uniform(low=-0.01,
-                                                high=0.01,
-                                                size=self.ns)
-        output.set_value(plant_state)
-
-class RewardSystem(LeafSystem):
-    def __init__(self):
-        LeafSystem.__init__(self)
-        # The state port is not used.
-        ns = controller_plant.num_multibody_states()
-        self.DeclareVectorInputPort("state", self.ns)
-        self.DeclareVectorOutputPort("reward", 1, self.CalcReward)
-
-    def CalcReward(self, context, output):
-        reward = 1 #R_0 + R_accel + R_collision
-        output[0] = reward
-"""
-#class DisturbanceGenerator(LeafSystem):
-
 class CassieFootstepControllerEnvironment(Diagram):
 
     def __init__(self, params: CassieFootstepControllerEnvironmentOptions):
@@ -206,9 +236,10 @@ class CassieFootstepControllerEnvironment(Diagram):
             True
         )
         self.controller_plant.Finalize()
-        self.nq = self.controller_plant.num_positions()
-        self.nv = self.controller_plant.num_velocities()
-        self.ns = self.controller_plant.num_multibody_states() #
+        self.nq = self.controller_plant.num_positions() # 23
+        self.nv = self.controller_plant.num_velocities() # 22
+        self.na = self.controller_plant.num_actuators() # 10
+        self.ns = self.controller_plant.num_multibody_states() # 45
 
         builder = DiagramBuilder()
         self.controller = MpfcOscDiagram(
@@ -311,16 +342,6 @@ class CassieFootstepControllerEnvironment(Diagram):
 
         self.input_port_indices = self.export_inputs(builder)
         self.output_port_indices = self.export_outputs(builder)
-
-        #########################
-        #obs_pub = builder.AddSystem(ObservationPublisher(False, self.controller_plant))
-        #builder.Connect(self.controller.get_output_port_alip(), obs_pub.get_input_port())
-        #builder.ExportOutput(obs_pub.get_output_port(), "observations")
-
-        #reward = builder.AddSystem(RewardSystem(self.controller_plant))
-        #builder.Connect(self.controller.get_output_port_alip(), reward.get_input_port())
-        #builder.ExportOutput(reward.get_output_port(), "reward")
-        #########################
 
         builder.BuildInto(self)
 
@@ -444,29 +465,37 @@ class CassieFootstepControllerEnvironment(Diagram):
             self.get_output_port_by_name("alip_state"),
             footstep_controller.get_input_port_by_name("state")
         )
+        self.ALIPfootstep_controller = footstep_controller
         return footstep_controller
 
     def AddToBuilderObservations(self, builder: DiagramBuilder):
-        #builder.AddSystem(self)
-        obs_pub = ObservationPublisher(False, self.controller_plant)
+        obs_pub = ObservationPublisher(self.controller_plant, False)
         builder.AddSystem(obs_pub)
         builder.Connect(
-            self.get_output_port_by_name("alip_state"),
-            obs_pub.get_input_port_by_name("states")
+            self.ALIPfootstep_controller.get_output_port_by_name("x"),
+            obs_pub.get_input_port_by_name("obs_states")
         )
         builder.ExportOutput(obs_pub.get_output_port(), "observations")
         return obs_pub
         
 
     def AddToBuilderRewards(self, builder: DiagramBuilder):
-        #builder.AddSystem(self)
-        #reward = builder.AddSystem(RewardSystem(self.controller_plant))
-        reward = RewardSystem(self.controller_plant)
+        footstep_controller = self.ALIPfootstep_controller
+        sim_env = self.cassie_sim
+        reward = RewardSystem(footstep_controller.params, sim_env)
         builder.AddSystem(reward)
-        builder.Connect(
-            self.get_output_port_by_name("alip_state"),
-            reward.get_input_port_by_name("state")
-        )
+
+        for controller_port in ['lqr_reference', 'x', 'footstep_command', 'vdes']:
+            builder.Connect(
+                footstep_controller.get_output_port_by_name(controller_port),
+                reward.get_input_port_by_name(controller_port)
+            )
+        for sim_port in ['fsm', 'time_until_switch', 'state']:
+            builder.Connect(
+                self.get_output_port_by_name(sim_port),
+                reward.get_input_port_by_name(sim_port)
+            )
+
         builder.ExportOutput(reward.get_output_port(), "reward")
         return reward
 

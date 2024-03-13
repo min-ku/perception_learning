@@ -131,6 +131,9 @@ class AlipFootstepLQR(LeafSystem):
             ).get_index(),
             'x': self.DeclareVectorOutputPort(
                 'x', 4, self.calc_discrete_alip_state
+            ).get_index(),
+            'vdes': self.DeclareVectorOutputPort(
+                'vdes', 2, self.desired_velocity
             ).get_index()
         }
 
@@ -142,6 +145,16 @@ class AlipFootstepLQR(LeafSystem):
         assert (name in self.output_port_indices)
         return self.get_output_port(self.output_port_indices[name])
 
+    def desired_velocity(self, context: Context, vdes: BasicVector) -> None:
+        """
+            Sends the Desired Velocity to an output port
+        """
+        desired_velocity = self.EvalVectorInput(
+            context,
+            self.input_port_indices['desired_velocity']
+        ).value().ravel()
+        vdes.set_value(desired_velocity)
+
     def calc_lqr_reference(self, context: Context, xd_ud: BasicVector) -> None:
         """
             Calculates the LQR reference trajectory for an output port
@@ -150,6 +163,8 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['desired_velocity']
         ).value().ravel()
+        #vdes = np.array([0.4, 0])
+
         fsm = self.EvalVectorInput(
             context,
             self.input_port_indices['fsm']
@@ -208,7 +223,8 @@ class AlipFootstepLQR(LeafSystem):
             context,
             self.input_port_indices['action_ue']
         ).value().ravel()
-        footstep_command[:2] = ud + ue
+        #footstep_command[:2] = ud + ue[:2]
+        footstep_command[:2] = ud - ue[:2]
         ####################################################
         footstep.set_value(footstep_command)
 

@@ -62,6 +62,7 @@ def sample(sim_params):
         action = env.action_space.sample()
         obs, reward, terminated, truncated, info = env.step(action)
         #env.render()
+        
         if terminated or truncated:
             input("The environment will reset. Press Enter to continue...")
             obs, _ = env.reset()
@@ -73,8 +74,8 @@ def run_play(sim_params):
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
     max_steps = 1e4
-    test_folder = "rl/tmp/DrakeCassie/eval_logs/test/vdes"#"rl/tmp/DrakeCassie/eval_logs/test/mean_ep_length_177"
-    model_path = path.join(test_folder, 'best_model.zip')#'best_model_1mil_plus1.zip')
+    test_folder = "rl/tmp/DrakeCassie/eval_logs/test/vdes_0.3_best"
+    model_path = path.join(test_folder, 'best_model.zip')
     model = PPO.load(model_path, env, verbose=1)#, tensorboard_log=log)
     
     obs, _ = env.reset()
@@ -82,7 +83,6 @@ def run_play(sim_params):
     for _ in range(int(max_steps)):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = env.step(action)
-        #print(reward)
         if terminated or truncated:
             obs, _ = env.reset()
             
