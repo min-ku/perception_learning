@@ -81,6 +81,7 @@ class CumulativeCost(LeafSystem):
 
             cost_so_far = discrete_state.value(self.cumulative_cost)[0]
             curr_cost = (x - xd).T @ self.params.Q @ (x - xd) + (u - ud).T @ self.params.R @ (u - ud)
+            print(curr_cost)
             cost_so_far += curr_cost
 
             discrete_state.set_value(self.cumulative_cost, np.array([cost_so_far]))

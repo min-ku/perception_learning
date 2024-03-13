@@ -3,6 +3,7 @@ Train a policy for //bindings/pydairlib/perceptive_locomotion/perception_learnin
 """
 import argparse
 import os
+import numpy as np
 
 import gymnasium as gym
 import stable_baselines3
@@ -11,6 +12,7 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.env_util import make_vec_env
+#from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import (
     DummyVecEnv,
     SubprocVecEnv,
@@ -36,6 +38,7 @@ from pydairlib.perceptive_locomotion.systems.cassie_footstep_controller_gym_envi
     CassieFootstepControllerEnvironment,
 )
 
+
 def bazel_chdir():
     """When using `bazel run`, the current working directory ("cwd") of the
     program is set to a deeply-nested runfiles directory, not the actual cwd.
@@ -54,34 +57,41 @@ def _run_training(config, args):
     policy_kwargs = config["policy_kwargs"]
     eval_freq = config["model_save_freq"]
     sim_params = config["sim_params"]
-
+    
+    #https://github.com/Farama-Foundation/Gymnasium/pull/810
+    #https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html
+    #https://github.com/Farama-Foundation/Gymnasium/pull/810
     if not args.train_single_env:
-        env = make_vec_env(env_name,
+        input("Starting...")
+        env = make_vec_env(
+                           env_name,
                            n_envs=num_env,
                            seed=0,
                            vec_env_cls=SubprocVecEnv,
                            env_kwargs={
                                'sim_params': sim_params,
                            })
+
     else:
-        #meshcat = StartMeshcat()
         input("Starting...")
+
         env = gym.make(env_name,
                        sim_params = sim_params,
                        )
-        check_env(env)
-        input("Open meshcat (optional). Press Enter to continue...")
+
+        #check_env(env)
 
     if args.test:
-        model = PPO(policy_type, env, n_steps=4, n_epochs=2,
+        model = PPO(policy_type, env, n_steps=64, n_epochs=2,
                     batch_size=8, policy_kwargs=policy_kwargs)
     else:
-        #tensorboard_log = f"{log_dir}runs/test"
+        tensorboard_log = f"{log_dir}runs/test"
         model = PPO(
-            policy_type, env, n_steps=int(1024/num_env), n_epochs=10,
+            policy_type, env, n_steps=int(2048/num_env), n_epochs=10,
             # In SB3, this is the mini-batch size.
             # https://github.com/DLR-RM/stable-baselines3/blob/master/docs/modules/ppo.rst
-            batch_size=32*num_env,
+            batch_size=64*num_env,
+            #use_sde=True, #Use generalized State Dependent Exploration (gSDE) instead of action noise exploration (default: False)
             verbose=1,
             tensorboard_log=tensorboard_log,
             policy_kwargs=policy_kwargs)
@@ -92,33 +102,25 @@ def _run_training(config, args):
     # Separate evaluation env.
     eval_env = gym.make(env_name,
                         sim_params = sim_params,
-                        #time_limit=time_limit,
-                        #obs_noise=obs_noise,
-                        #monitoring_camera=True,
                         )
+
     eval_env = DummyVecEnv([lambda: eval_env])
-    # Record a video every n evaluation rollouts.
-    n = 1
-    #eval_env = VecVideoRecorder(
-    #                    eval_env,
-    #                    log_dir+f"videos/test",
-    #                    record_video_trigger=lambda x: x % n == 0,
-    #                    video_length=100)
-    # Use deterministic actions for evaluation.
-    #eval_callback = EvalCallback(
-    #    eval_env,
-    #    best_model_save_path=log_dir+f'eval_logs/test',
-    #    log_path=log_dir+f'eval_logs/test',
-    #    eval_freq=eval_freq,
-    #    deterministic=True,
-    #    render=False)
+
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=log_dir+f'eval_logs/test',
+        log_path=log_dir+f'eval_logs/test',
+        eval_freq=eval_freq,
+        deterministic=True,
+        render=False)
+
     input("Model learning...")
 
     model.learn(
         total_timesteps=total_timesteps,
-    #    callback=eval_callback,
+        callback=eval_callback,
     )
-    input("Close..")
+
     eval_env.close()
 
 def _main():
@@ -137,32 +139,30 @@ def _main():
         return 0 if args.test else 1
 
     if args.test:
-        num_env = 1
+        num_env = 2
     elif args.train_single_env:
         num_env = 1
     else:
         num_env = 10
 
+    # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": "MlpPolicy",
-        "total_timesteps": 5e2 if not args.test else 5,
+        "total_timesteps": 1e6 if not args.test else 5,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 1e4,
-        "policy_kwargs": {'activation_fn': th.nn.ReLU,
-                          'net_arch': {'pi': [64, 64, 64],
-                                       'vf': [64, 64, 64]}},
+        "model_save_freq": 2e2,
+        "policy_kwargs": {'activation_fn': th.nn.Tanh,#th.nn.ReLU,    # activation function
+                          'net_arch': {'pi': [128, 128, 128], # policy and value networks
+                                       'vf': [128, 128, 128]}},
         "sim_params" : sim_params
     }
-
     _run_training(config, args)
 
-
 gym.envs.register(
-    id="DrakeCassie-v0",
-    entry_point=(
-        "pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv"))
+        id="DrakeCassie-v0",
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")
 
 if __name__ == '__main__':
     _main()

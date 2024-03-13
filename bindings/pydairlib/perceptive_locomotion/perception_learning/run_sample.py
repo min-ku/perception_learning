@@ -3,6 +3,7 @@ Train a policy for //bindings/pydairlib/perceptive_locomotion/perception_learnin
 """
 import argparse
 import os
+from os import path
 
 import gymnasium as gym
 import stable_baselines3
@@ -49,32 +50,51 @@ def sample(sim_params):
     env = gym.make("DrakeCassie-v0",
         sim_params = sim_params,
     )
-    input("Check...")
+    #input("Check...")
     #check_env(env)
     rate = 1.0
     env.simulator.set_target_realtime_rate(rate)
-    max_steps = 10000
+    max_steps = 500
+    obs, _ = env.reset()
+    input("Start..")
+    for i in range(int(max_steps)):
+        # Plays a random policy.
+        action = env.action_space.sample()
+        obs, reward, terminated, truncated, info = env.step(action)
+        #env.render()
+        if terminated or truncated:
+            input("The environment will reset. Press Enter to continue...")
+            obs, _ = env.reset()
+
+def run_play(sim_params):
+    env = gym.make("DrakeCassie-v0",
+                    sim_params = sim_params,
+                    )
+    rate = 1.0
+    env.simulator.set_target_realtime_rate(rate)
+    max_steps = 1e4
+    test_folder = "rl/tmp/DrakeCassie/eval_logs/test/vdes"#"rl/tmp/DrakeCassie/eval_logs/test/mean_ep_length_177"
+    model_path = path.join(test_folder, 'best_model.zip')#'best_model_1mil_plus1.zip')
+    model = PPO.load(model_path, env, verbose=1)#, tensorboard_log=log)
+    
     obs, _ = env.reset()
     input("Start..")
     for _ in range(int(max_steps)):
-        # Plays a random policy.
-        #input("Action...")
-        action = env.action_space.sample()
-        #input("Sampled...")
+        action, _states = model.predict(obs, deterministic=True)
         obs, reward, terminated, truncated, info = env.step(action)
-        #env.render()
-        #input("...?")
+        #print(reward)
         if terminated or truncated:
-            #if args.debug:
-            #    input("The environment will reset. Press Enter to continue...")
             obs, _ = env.reset()
+            
 def _main():
     bazel_chdir()
     sim_params = CassieFootstepControllerEnvironmentOptions()
-    gym.envs.register(id="DrakeCassie-v0",
-                    entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
+    gym.envs.register(
+        id="DrakeCassie-v0",
+        entry_point="pydairlib.perceptive_locomotion.perception_learning.DrakeCassieEnv:DrakeCassieEnv")  # noqa
 
-    sample(sim_params)
+    #sample(sim_params)
+    run_play(sim_params)
 
 if __name__ == '__main__':
     _main()

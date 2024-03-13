@@ -74,10 +74,10 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    DrawAndSaveDiagramGraph(diagram, '../ALIP_RL')
+    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL')
     return sim_env, controller, diagram
 
-def reset_handler(simulator, seed): # context = self.simulator.get_mutable_context() ?
+def reset_handler(simulator, seed):
     
     np.random.seed(seed)
 
@@ -98,12 +98,15 @@ def reset_handler(simulator, seed): # context = self.simulator.get_mutable_conte
             'tmp/initial_conditions_2.npz'
         )
     )
-    v_des_theta = np.pi / 6
-    v_des_norm = 1.0
     datapoint = ic_generator.random()
-    v_theta = np.random.uniform(-v_des_theta, v_des_theta)
-    v_norm = np.random.uniform(0.2, v_des_norm)
-    datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+    #v_des_theta = np.pi / 6
+    #v_des_norm = 1.0
+    #v_theta = np.random.uniform(-v_des_theta, v_des_theta)
+    #v_norm = np.random.uniform(0.2, v_des_norm)
+    #datapoint['desired_velocity'] = np.array([v_norm * np.cos(v_theta), v_norm * np.sin(v_theta)]).flatten()
+
+    #datapoint = ic_generator.choose(0)
+    datapoint['desired_velocity'] = np.array([0.4, 0])
 
     # timing aliases
     t_ss = controller.params.single_stance_duration
@@ -123,7 +126,7 @@ def reset_handler(simulator, seed): # context = self.simulator.get_mutable_conte
         datapoint['initial_swing_foot_pos']
     )
     controller.get_input_port_by_name("desired_velocity").FixValue(
-        context =controller_context,
+        context = controller_context,
         value = datapoint['desired_velocity']
     )
     simulator.reset_context(context)
@@ -134,9 +137,9 @@ def reset_handler(simulator, seed): # context = self.simulator.get_mutable_conte
 def simulate_init(sim_params):
     sim_env, controller, diagram = build_diagram(sim_params)
     simulator = Simulator(diagram)
-
+    simulator.Initialize()
     def monitor(context):
-        time_limit = 10
+        time_limit = 30
         plant = sim_env.cassie_sim.get_plant()
         plant_context = plant.GetMyContextFromRoot(context)
         
@@ -154,12 +157,15 @@ def simulate_init(sim_params):
         z2 = com[2] - right_toe_pos[2]
         
         if context.get_time() > time_limit:
+            #print("Time Limit")
             return EventStatus.ReachedTermination(diagram, "time limit")
 
         if z1 < 0.2:
+            #print("Left Toe")
             return EventStatus.ReachedTermination(diagram, "left toe exceeded")
 
         if z2 < 0.2:
+            #print("Right Toe")
             return EventStatus.ReachedTermination(diagram, "right toe exceeded")
 
         return EventStatus.Succeeded()
@@ -193,7 +199,8 @@ def DrakeCassieEnv(sim_params: CassieFootstepControllerEnvironmentOptions):
                                   high=np.asarray(ho, dtype="float64"),
                                   dtype=np.float64)
 
-    time_step = 30.0
+    # time_step to match walking
+    time_step = 0.05
     
     env = DrakeGymEnv(
         simulator=simulator,
