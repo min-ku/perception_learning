@@ -24,12 +24,17 @@ from pydrake.systems.all import (
     InputPortIndex,
     OutputPortIndex,
     ConstantVectorSource,
-    ZeroOrderHold
+    ZeroOrderHold,
+    VectorLogSink,
+    LogVectorOutput,
 )
 
 from pydairlib.perceptive_locomotion.perception_learning.DrakeGymEnv import (
     DrakeGymEnv
 )
+
+from pydairlib.perceptive_locomotion.perception_learning.true_cost_system import (
+    CumulativeCost)
 
 from pydairlib.perceptive_locomotion.systems.alip_lqr_rl import (
     AlipFootstepLQROptions,
@@ -61,6 +66,22 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
     reward = sim_env.AddToBuilderRewards(builder)
     builder.ExportInput(controller.get_input_port_by_name("action_ue"), "actions")
 
+    ##
+    cost_system = CumulativeCost.AddToBuilder(builder, sim_env, controller)
+    cost_zoh = ZeroOrderHold(0.05, 1) # only need to log the cost at sparse intervals, since it updates once per stride
+    cost_logger = VectorLogSink(1)
+    builder.AddSystem(cost_zoh)
+    builder.AddSystem(cost_logger)
+    builder.Connect(
+        cost_system.get_output_port(),
+        cost_zoh.get_input_port()
+    )
+    builder.Connect(
+        cost_zoh.get_output_port(),
+        cost_logger.get_input_port()
+    )
+    ##
+
     footstep_zoh = ZeroOrderHold(1.0 / 30.0, 3)
     builder.AddSystem(footstep_zoh)
     builder.Connect(
@@ -74,8 +95,8 @@ def build_diagram(sim_params: CassieFootstepControllerEnvironmentOptions) \
 
     diagram = builder.Build()
 
-    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL_test')
-    return sim_env, controller, diagram
+    #DrawAndSaveDiagramGraph(diagram, '../ALIP_RL_LQRcost_test')
+    return sim_env, controller, diagram, cost_logger
 
 def reset_handler(simulator, seed):
     
@@ -135,7 +156,7 @@ def reset_handler(simulator, seed):
 
 
 def simulate_init(sim_params):
-    sim_env, controller, diagram = build_diagram(sim_params)
+    sim_env, controller, diagram, cost_logger= build_diagram(sim_params)
     simulator = Simulator(diagram)
     simulator.Initialize()
     def monitor(context):
@@ -158,14 +179,20 @@ def simulate_init(sim_params):
         
         if context.get_time() > time_limit:
             #print("Time Limit")
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data())
             return EventStatus.ReachedTermination(diagram, "Max Time Limit")
 
         if z1 < 0.2:
             #print("Left Toe")
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data())
             return EventStatus.ReachedTermination(diagram, "Left Toe Exceeded")
 
         if z2 < 0.2:
             #print("Right Toe")
+            #print(context.get_time())
+            #print(cost_logger.FindLog(context).data())
             return EventStatus.ReachedTermination(diagram, "Right Toe Exceeded")
 
         return EventStatus.Succeeded()

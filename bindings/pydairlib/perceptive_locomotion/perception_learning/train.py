@@ -57,7 +57,7 @@ def _run_training(config, args):
     policy_kwargs = config["policy_kwargs"]
     eval_freq = config["model_save_freq"]
     sim_params = config["sim_params"]
-    
+
     #https://github.com/Farama-Foundation/Gymnasium/pull/810
     #https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html
     #https://github.com/Farama-Foundation/Gymnasium/pull/810
@@ -153,14 +153,14 @@ def _main():
     # https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
     config = {
         "policy_type": "MlpPolicy",
-        "total_timesteps": 1e6 if not args.test else 5,
+        "total_timesteps": 2e6 if not args.test else 5,
         "env_name": "DrakeCassie-v0",
         "num_workers": num_env,
         "local_log_dir": args.log_path,
-        "model_save_freq": 2e2,
+        "model_save_freq": 3e2,
         "policy_kwargs": {'activation_fn': th.nn.Tanh,        # activation function | th.nn.ReLU,
-                          'net_arch': {'pi': [128, 128, 128], # policy and value networks
-                                       'vf': [128, 128, 128]}},
+                          'net_arch': {'pi': [64, 64, 64], # policy and value networks
+                                       'vf': [64, 64, 64]}},
         "sim_params" : sim_params
     }
     _run_training(config, args)
